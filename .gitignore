@@ -1,0 +1,71 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage directory used by testing tools like Jest
+coverage/
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# MongoDB files
+*.lock
+.mongorc.js
+
+# PostgreSQL
+*.sql   # Ignore raw SQL dump files if you create backups locally
+
+# Redis
+dump.rdb
+appendonly.aof
+
+# Kafka
+*.log       # Ignore Kafka log files
+data/       # If local Kafka broker generates data files
+
+# CI/CD
+*.log        # Ignore pipeline logs if generated locally
+coverage/    # Coverage files from CI/CD runs
+.ci/         # Ignore any specific CI configurations unless required
+
+# Dependencies from package managers
+yarn.lock
+package-lock.json
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Backend build artifacts
+backend/node_modules/
+backend/dist/
+backend/build/
+
+# Miscellaneous
+*.bak
+*.tmp

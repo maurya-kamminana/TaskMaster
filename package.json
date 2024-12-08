@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "server": "nodemon --exec 'cd backend && node server.js'",
+    "AuthServer": "nodemon --exec 'cd backend && node authServer.js'",
+    "client": "npm start --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+
+  "dependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
