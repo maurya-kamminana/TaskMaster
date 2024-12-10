@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 });
 
 const authRoutes = require('./src/routes/authRoutes');
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

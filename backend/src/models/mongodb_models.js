@@ -33,14 +33,14 @@ const NotificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['Task Update', 'Role Change', 'New Comment'],
+        enum: ['project_user_added', 'project_user_removed'],
         required: true
     },
     message: {
         type: String,
         required: true
     },
-    read: {
+    read_status: {
         type: Boolean,
         default: false
     },

@@ -11,7 +11,10 @@ const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         unique: true,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            len: [3, 20]
+        }
     },
     email: {
         type: DataTypes.STRING,
@@ -132,7 +135,8 @@ const Role = sequelize.define('Role', {
     },
     role: {
         type: DataTypes.ENUM('Manager', 'Contributor', 'Viewer'),
-        allowNull: false
+        allowNull: false,
+        defaultValue: 'Viewer'
     }
 }, {
     tableName: 'roles',
@@ -146,13 +150,13 @@ Project.belongsTo(User, { foreignKey: 'manager_id' });
 User.hasMany(Task, { foreignKey: 'assignee_id' });
 Task.belongsTo(User, { foreignKey: 'assignee_id' });
 
-Project.hasMany(Task, { foreignKey: 'project_id' });
+Project.hasMany(Task, { foreignKey: 'project_id', onDelete: 'CASCADE' });
 Task.belongsTo(Project, { foreignKey: 'project_id' });
 
 User.hasMany(Role, { foreignKey: 'user_id' });
 Role.belongsTo(User, { foreignKey: 'user_id' });
 
-Project.hasMany(Role, { foreignKey: 'project_id' });
+Project.hasMany(Role, { foreignKey: 'project_id', onDelete: 'CASCADE' });
 Role.belongsTo(Project, { foreignKey: 'project_id' });
 
 // Sync Models (be cautious with force: true in production)

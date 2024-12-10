@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const redisClient = require('./redisClient');
 const { sequelize } = require('./config/db');
+const projectRoutes = require('./src/routes/projectRoutes');
+const taskRoutes = require('./src/routes/taskRoutes');
+const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 
@@ -25,7 +28,9 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 // Routes
-
+app.use('/projects', projectRoutes);
+app.use('/tasks', taskRoutes);
+app.use('/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

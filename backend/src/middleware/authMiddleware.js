@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { sequelize, User } = require('../models/postgres_models');
 
 const authenticateToken = async (req, res, next) => {
   let token;
@@ -17,7 +17,10 @@ const authenticateToken = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
       // Get user from the token
-      req.user = await User.findById(decoded.id).select("-password");
+      req.user = await User.findOne({
+        where: { id: decoded.id },
+        attributes: { exclude: ['password_hash'] }
+      });
 
       next();
     } catch (error) {
@@ -32,13 +35,4 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Admin role check middleware
-const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ message: "Access denied. Admin role required." });
-  }
-};
-
-module.exports = { authenticateToken, isAdmin };
+module.exports = { authenticateToken };
