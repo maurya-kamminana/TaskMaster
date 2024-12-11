@@ -189,6 +189,12 @@ exports.addUserToProject = async (req, res) => {
       role,
     });
 
+    // Publish a notification to Kafka
+    await publishNotificationToKafka("project.user.added", {
+      projectId: project_id,
+      userId: user_id,
+    });
+
     res.status(201).json({ message: "User added to project" });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -225,6 +231,12 @@ exports.removeUserFromProject = async (req, res) => {
         project_id: req.params.id,
         user_id,
       },
+    });
+
+    // Publish a notification to Kafka
+    await publishNotificationToKafka("project.user.removed", {
+      projectId: project_id,
+      userId: user_id,
     });
 
     if (!rowsDeleted)

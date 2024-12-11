@@ -6,6 +6,7 @@ const { sequelize } = require('./config/db');
 const projectRoutes = require('./src/routes/projectRoutes');
 const taskRoutes = require('./src/routes/taskRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const { start : consumerStart } = require('./src/services/notificationService');
 
 const app = express();
 
@@ -26,6 +27,9 @@ mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('MongoDB connected successfully'))
 .catch((err) => console.error('MongoDB connection error:', err));
 
+// Start Kafka consumer
+consumerStart()
+.catch((err) => console.error('Failed to start Consumer :', err));
 
 // Routes
 app.use('/projects', projectRoutes);
