@@ -6,6 +6,7 @@ const { sequelize } = require('./config/db');
 const projectRoutes = require('./src/routes/projectRoutes');
 const taskRoutes = require('./src/routes/taskRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 const { start : consumerStart } = require('./src/services/notificationService');
 
 const app = express();
@@ -35,6 +36,7 @@ consumerStart()
 app.use('/projects', projectRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/users', userRoutes);
+app.use('/notifications', notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
