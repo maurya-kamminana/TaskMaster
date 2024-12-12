@@ -363,6 +363,12 @@ exports.addTaskToProject = async (req, res) => {
 exports.getProjectTasks = async (req, res) => {
   const req_user_id = req.user.id;
   const project_id = req.params.id;
+
+  // Extract pagination parameters from query
+  const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
+  const limit = parseInt(req.query.limit) || 10; // Default to 10 tasks per page
+  const offset = (page - 1) * limit;
+
   try {
     // Check if the user is part of the project
     const userRole = await checkUserRole(req_user_id, project_id);
@@ -371,8 +377,8 @@ exports.getProjectTasks = async (req, res) => {
         .status(403)
         .json({ error: "Access denied. You are not part of this project" });
 
-    // Fetch tasks associated with the project, with only the required fields
-    const tasks = await Task.findAll({
+    // Fetch tasks associated with the project, with only the required fields and pagination
+    const { count, rows: tasks } = await Task.findAndCountAll({
       where: { project_id },
       attributes: [
         "id",
@@ -390,8 +396,23 @@ exports.getProjectTasks = async (req, res) => {
           attributes: ["id", "name", "email"], // Include only specific user fields
         },
       ],
+      limit,
+      offset,
     });
-    res.json(tasks);
+    
+    // Calculate total pages
+    const totalPages = Math.ceil(count / limit);
+
+    // Send paginated response
+    res.json({
+      tasks,
+      pagination: {
+        totalItems: count,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
