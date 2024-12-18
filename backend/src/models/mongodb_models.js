@@ -66,18 +66,18 @@ CommentSchema.pre('save', function(next) {
 });
 
 // Static method for creating notifications
-NotificationSchema.statics.createNotification = async function(userId, type, message) {
-    try {
-        const notification = new this({
-            user_id: userId,
-            type,
-            message
-        });
-        return await notification.save();
-    } catch (error) {
-        throw new Error(`Failed to create notification: ${error.message}`);
-    }
-};
+// NotificationSchema.statics.createNotification = async function(userId, type, message) {
+//     try {
+//         const notification = new this({
+//             user_id: userId,
+//             type,
+//             message
+//         });
+//         return await notification.save();
+//     } catch (error) {
+//         throw new Error(`Failed to create notification: ${error.message}`);
+//     }
+// };
 
 module.exports = {
     Comment,

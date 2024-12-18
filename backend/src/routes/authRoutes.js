@@ -6,5 +6,6 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/refreshToken', generateNewToken);
 router.delete('/logout', removeRefreshToken);
+router.post('/session', generateNewToken);
 
 module.exports = router;

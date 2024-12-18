@@ -14,7 +14,13 @@ const authenticateToken = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET,  (err, decoded) => {
+        if (err) {
+          return res.status(403).json({ message: "Access token expired" });
+        }
+        return decoded;
+      }
+      );
 
       // Get user from the token
       req.user = await User.findOne({

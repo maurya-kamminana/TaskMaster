@@ -1,4 +1,5 @@
-const { Project, Role, User } = require("../models");
+const { Project, Role, User, Task } = require("../models");
+const { publishNotificationToKafka } = require("../utils/kafka");
 
 // function to check if the user has a role in the project
 const checkUserRole = async (user_id, project_id) => {
@@ -140,40 +141,48 @@ exports.deleteProject = async (req, res) => {
   }
 };
 
-// add and remove users from a project can only be done by the user who have the 'Manager' role in the project
+// Add and remove users from a project can only be done by the user who has the 'Manager' role in the project
 exports.addUserToProject = async (req, res) => {
-  const { user_id, role } = req.body;
+  const { user_email, role } = req.body;
   const manager_id = req.user.id;
   const project_id = req.params.id;
 
   try {
-    if (!user_id || !role) {
-      return res.status(400).json({ error: "User ID and role are required" });
+    if (!user_email || !role) {
+      console.error("Failed adding user to project. Email and role are required");
+      return res.status(400).json({ error: "User email and role are required" });
     }
 
-    // validate role
-    const validRoles = ["Manager", "Developer", "Designer"];
-    if (!validRoles.includes(role))
+    // Validate role
+    const validRoles = ["Manager", "Contributor", "Viewer"];
+    if (!validRoles.includes(role)) {
+      console.error("Failed adding user to project. Invalid role:", role);
       return res.status(400).json({ error: "Invalid role" });
+    }
 
     // Check if the user is the manager of the project
     const userIsManager = await checkUserIsManager(manager_id, project_id);
-    if (!userIsManager)
+    if (!userIsManager) {
       return res
         .status(403)
-        .json({ error: "Access denied. You are not the project manager" });
+        .json({ error: "Access denied. You are not the project Manager" });
+    }
 
-    const project = await Project.findByPk(req.params.id);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    const project = await Project.findByPk(project_id);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
-    const user = await User.findByPk(user_id);
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const user = await User.findOne({ where: { email: user_email } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     // Check if the user already has a role in the project
     const existingRole = await Role.findOne({
       where: {
-        user_id,
-        project_id: req.params.id,
+        user_id: user.id,
+        project_id,
       },
     });
 
@@ -184,25 +193,26 @@ exports.addUserToProject = async (req, res) => {
     }
 
     await Role.create({
-      project_id: req.params.id,
-      user_id,
+      project_id,
+      user_id: user.id,
       role,
     });
 
     // Publish a notification to Kafka
     await publishNotificationToKafka("project.user.added", {
       projectId: project_id,
-      userId: user_id,
+      userId: user.id,
     });
 
     res.status(201).json({ message: "User added to project" });
   } catch (error) {
+    console.error("Error adding user to project:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 exports.removeUserFromProject = async (req, res) => {
-  const { user_id } = req.body;
+  const user_id = req.body.userId;
   const manager_id = req.user.id;
   const project_id = req.params.id;
   try {
@@ -215,12 +225,13 @@ exports.removeUserFromProject = async (req, res) => {
     if (!userIsManager)
       return res
         .status(403)
-        .json({ error: "Access denied. You are not the project manager" });
+        .json({ error: "Access denied. You are not the project Manager" });
 
     // no one should not be able to remove the user who created the project
     const project = await Project.findByPk(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
     if (project.manager_id === user_id) {
+      console.warn("Project creator cannot be removed from the project");
       return res
         .status(400)
         .json({ error: "Project creator cannot be removed from the project" });
@@ -228,7 +239,7 @@ exports.removeUserFromProject = async (req, res) => {
 
     const rowsDeleted = await Role.destroy({
       where: {
-        project_id: req.params.id,
+        project_id,
         user_id,
       },
     });
@@ -239,8 +250,10 @@ exports.removeUserFromProject = async (req, res) => {
       userId: user_id,
     });
 
-    if (!rowsDeleted)
+    if (!rowsDeleted){
+      console.error("User not found in project");
       return res.status(404).json({ error: "User not found in project" });
+    }
     res.json({ message: "User removed from project" });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -263,12 +276,23 @@ exports.getProjectUsers = async (req, res) => {
       where: { project_id },
       include: {
         model: User,
-        attributes: ["id", "name", "email"], // Include only necessary user attributes
+        attributes: ["id", "username", "email"], // Include only necessary user attributes
       },
       attributes: ["role"], // Include only necessary role attributes
     });
-    res.json(roles);
+
+    const result = roles.map(role => {
+      return {
+        role: role.role,
+        id: role.User.id,
+        username: role.User.username,
+        email: role.User.email
+      };
+    });
+
+    res.json(result);
   } catch (error) {
+    console.error("Error fetching project users:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -393,11 +417,12 @@ exports.getProjectTasks = async (req, res) => {
         {
           model: User, // Include the assignee details
           as: "assignee", // Assuming Task model has an alias for the User model as 'assignee'
-          attributes: ["id", "name", "email"], // Include only specific user fields
+          attributes: ["id", "username", "email"], // Include only specific user fields
         },
       ],
       limit,
       offset,
+      order: [["created_at", "ASC"]],
     });
     
     // Calculate total pages
@@ -414,6 +439,7 @@ exports.getProjectTasks = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error fetching project tasks:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

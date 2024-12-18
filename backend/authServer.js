@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const redisClient = require('./redisClient');
 const { sequelize } = require('./config/db');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -15,8 +16,14 @@ if (!process.env.MONGO_URI || !process.env.PORT) {
 }
 
 // Middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Specify exact origin
+  credentials: true // Allow credentials
+}));
+app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 // Connect to MongoDB

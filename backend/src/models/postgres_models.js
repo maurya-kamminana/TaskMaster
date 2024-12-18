@@ -148,7 +148,7 @@ User.hasMany(Project, { foreignKey: 'manager_id' });
 Project.belongsTo(User, { foreignKey: 'manager_id' });
 
 User.hasMany(Task, { foreignKey: 'assignee_id' });
-Task.belongsTo(User, { foreignKey: 'assignee_id' });
+Task.belongsTo(User, { foreignKey: 'assignee_id', as: 'assignee' });
 
 Project.hasMany(Task, { foreignKey: 'project_id', onDelete: 'CASCADE' });
 Task.belongsTo(Project, { foreignKey: 'project_id' });

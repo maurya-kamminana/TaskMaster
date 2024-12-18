@@ -8,6 +8,7 @@ const taskRoutes = require('./src/routes/taskRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const { start : consumerStart } = require('./src/services/notificationService');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -20,8 +21,14 @@ if (!process.env.MONGO_URI || !process.env.PORT) {
 }
 
 // Middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Specify exact origin
+  credentials: true // Allow credentials
+}));
+app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
