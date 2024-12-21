@@ -1,4 +1,4 @@
-const { Project, Role, User, Task } = require("../models");
+const { Project, Role, User, Task, Notification } = require("../models");
 const { publishNotificationToKafka } = require("../utils/kafka");
 
 // function to check if the user has a role in the project
@@ -198,6 +198,13 @@ exports.addUserToProject = async (req, res) => {
       role,
     });
 
+    // store the notification in the database
+    await Notification.create({
+      user_id: user.id,
+      type: "project_user_added",
+      message: `You have been added to project ${project_id}`,
+    });
+
     // Publish a notification to Kafka
     await publishNotificationToKafka("project.user.added", {
       projectId: project_id,
@@ -243,13 +250,20 @@ exports.removeUserFromProject = async (req, res) => {
         user_id,
       },
     });
+    
+    // store the notification in the database
+    await Notification.create({
+      user_id,
+      type: "project_user_removed",
+      message: `You have been removed from project ${project_id}`,
+    });
 
     // Publish a notification to Kafka
     await publishNotificationToKafka("project.user.removed", {
       projectId: project_id,
       userId: user_id,
     });
-
+    
     if (!rowsDeleted){
       console.error("User not found in project");
       return res.status(404).json({ error: "User not found in project" });
