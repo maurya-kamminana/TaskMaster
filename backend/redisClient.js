@@ -8,7 +8,11 @@ client.on('connect', () => console.log('Redis connected successfully'));
 client.on('error', (err) => console.error('Redis error:', err));
 
 (async () => {
-    await client.connect();
+    try {
+        await client.connect(); // Connect returns a promise
+    } catch (error) {
+        console.error('Error connecting to Redis:', error);
+    }
 })();
 
 module.exports = client;

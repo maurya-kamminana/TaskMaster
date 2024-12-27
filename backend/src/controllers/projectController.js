@@ -45,20 +45,20 @@ exports.getUserProjects = async (req, res) => {
 exports.createProject = async (req, res) => {
   const { name, description } = req.body;
   const user_id = req.user.id;
-
+  
   try {
     const project = await Project.create({
       name,
       description,
       manager_id: user_id,
     });
-
+    
     await Role.create({
       user_id,
       project_id: project.id,
       role: "Manager",
     });
-
+    
     res.status(201).json(project);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -69,15 +69,15 @@ exports.getProjectById = async (req, res) => {
   try {
     const user_id = req.user.id;
     const project_id = req.params.id;
-
+    
     // Check if the user has a role in the project
     const userRole = await checkUserRole(user_id, project_id);
-
+    
     if (!userRole)
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not part of this project." });
-
+    .status(403)
+    .json({ error: "Access denied. You are not part of this project." });
+    
     const project = await Project.findByPk(project_id);
     if (!project) return res.status(404).json({ error: "Project not found" });
     res.json(project);
@@ -92,23 +92,23 @@ exports.updateProject = async (req, res) => {
   const { name, description } = req.body;
   try {
     const user_id = req.user.id;
-
+    
     const project = await Project.findByPk(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
-
+    
     // Check if the user is the one who created the project
     if (project.manager_id !== user_id) {
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not the project creator" });
+      .status(403)
+      .json({ error: "Access denied. You are not the project creator" });
     }
-
+    
     // Update only the fields that are provided in the request body
     await project.update({
       name: name || project.name, // If 'name' is not provided, use the current value
       description: description || project.description, // If 'description' is not provided, use the current value
     });
-
+    
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -118,21 +118,21 @@ exports.updateProject = async (req, res) => {
 exports.deleteProject = async (req, res) => {
   try {
     const user_id = req.user.id;
-
+    
     const project = await Project.findByPk(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
-
+    
     // Check if the user is the one who created the project
     if (project.manager_id !== user_id) {
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not the project creator" });
+      .status(403)
+      .json({ error: "Access denied. You are not the project creator" });
     }
-
+    
     const rowsDeleted = await Project.destroy({
       where: { id: req.params.id },
     });
-
+    
     if (!rowsDeleted)
       return res.status(404).json({ error: "Project not found" });
     res.json({ message: "Project deleted" });
@@ -146,38 +146,38 @@ exports.addUserToProject = async (req, res) => {
   const { user_email, role } = req.body;
   const manager_id = req.user.id;
   const project_id = req.params.id;
-
+  
   try {
     if (!user_email || !role) {
       console.error("Failed adding user to project. Email and role are required");
       return res.status(400).json({ error: "User email and role are required" });
     }
-
+    
     // Validate role
     const validRoles = ["Manager", "Contributor", "Viewer"];
     if (!validRoles.includes(role)) {
       console.error("Failed adding user to project. Invalid role:", role);
       return res.status(400).json({ error: "Invalid role" });
     }
-
+    
     // Check if the user is the manager of the project
     const userIsManager = await checkUserIsManager(manager_id, project_id);
     if (!userIsManager) {
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not the project Manager" });
+      .status(403)
+      .json({ error: "Access denied. You are not the project Manager" });
     }
-
+    
     const project = await Project.findByPk(project_id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
-
+    
     const user = await User.findOne({ where: { email: user_email } });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
+    
     // Check if the user already has a role in the project
     const existingRole = await Role.findOne({
       where: {
@@ -185,32 +185,32 @@ exports.addUserToProject = async (req, res) => {
         project_id,
       },
     });
-
+    
     if (existingRole) {
       return res
-        .status(400)
-        .json({ error: "User already has a role in this project" });
+      .status(400)
+      .json({ error: "User already has a role in this project" });
     }
-
+    
     await Role.create({
       project_id,
       user_id: user.id,
       role,
     });
-
+    
     // store the notification in the database
     await Notification.create({
       user_id: user.id,
       type: "project_user_added",
       message: `You have been added to project ${project_id}`,
     });
-
+    
     // Publish a notification to Kafka
     await publishNotificationToKafka("project.user.added", {
       projectId: project_id,
       userId: user.id,
     });
-
+    
     res.status(201).json({ message: "User added to project" });
   } catch (error) {
     console.error("Error adding user to project:", error);
@@ -226,24 +226,24 @@ exports.removeUserFromProject = async (req, res) => {
     if (!user_id) {
       return res.status(400).json({ error: "User ID is required" });
     }
-
+    
     // Check if the user sending the request is the manager of the project
     const userIsManager = await checkUserIsManager(manager_id, project_id);
     if (!userIsManager)
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not the project Manager" });
-
+    .status(403)
+    .json({ error: "Access denied. You are not the project Manager" });
+    
     // no one should not be able to remove the user who created the project
     const project = await Project.findByPk(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
     if (project.manager_id === user_id) {
       console.warn("Project creator cannot be removed from the project");
       return res
-        .status(400)
-        .json({ error: "Project creator cannot be removed from the project" });
+      .status(400)
+      .json({ error: "Project creator cannot be removed from the project" });
     }
-
+    
     const rowsDeleted = await Role.destroy({
       where: {
         project_id,
@@ -257,7 +257,7 @@ exports.removeUserFromProject = async (req, res) => {
       type: "project_user_removed",
       message: `You have been removed from project ${project_id}`,
     });
-
+    
     // Publish a notification to Kafka
     await publishNotificationToKafka("project.user.removed", {
       projectId: project_id,
@@ -274,6 +274,7 @@ exports.removeUserFromProject = async (req, res) => {
   }
 };
 
+
 // lists all the users associated with a project
 exports.getProjectUsers = async (req, res) => {
   const req_user_id = req.user.id;
@@ -283,9 +284,9 @@ exports.getProjectUsers = async (req, res) => {
     const userRole = await checkUserRole(req_user_id, project_id);
     if (!userRole)
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not part of this project" });
-
+    .status(403)
+    .json({ error: "Access denied. You are not part of this project" });
+    
     const roles = await Role.findAll({
       where: { project_id },
       include: {
@@ -294,7 +295,7 @@ exports.getProjectUsers = async (req, res) => {
       },
       attributes: ["role"], // Include only necessary role attributes
     });
-
+    
     const result = roles.map(role => {
       return {
         role: role.role,
@@ -303,7 +304,7 @@ exports.getProjectUsers = async (req, res) => {
         email: role.User.email
       };
     });
-
+    
     res.json(result);
   } catch (error) {
     console.error("Error fetching project users:", error);
@@ -315,72 +316,72 @@ exports.addTaskToProject = async (req, res) => {
   const { title, description, status, priority, assignee_id } = req.body;
   const req_user_id = req.user.id;
   const project_id = req.params.id;
-
+  
   try {
     // Validate required fields
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
     }
-
+    
     // Check if the user is part of the project
     const userRole = await checkUserRole(req_user_id, project_id);
     if (!userRole) {
       return res
-        .status(403)
-        .json({ error: "Access denied. You are not part of this project" });
+      .status(403)
+      .json({ error: "Access denied. You are not part of this project" });
     }
-
+    
     // Validate the user's role
     const allowedRoles = ["Manager", "Contributor"];
     if (!allowedRoles.includes(userRole.role)) {
       return res.status(403).json({
         error:
-          "Access denied. Only Managers and Contributors can add tasks to this project",
+        "Access denied. Only Managers and Contributors can add tasks to this project",
       });
     }
-
+    
     // Check if the project exists
     const project = await Project.findByPk(project_id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
-
+    
     // Validate status and priority
     const validStatuses = ["To Do", "In Progress", "Done"];
     const validPriorities = ["Low", "Medium", "High"];
-
+    
     if (status && !validStatuses.includes(status)) {
       return res
-        .status(400)
-        .json({
-          error: `Invalid status. Allowed values are: ${validStatuses.join(
-            ", "
-          )}`,
-        });
+      .status(400)
+      .json({
+        error: `Invalid status. Allowed values are: ${validStatuses.join(
+          ", "
+        )}`,
+      });
     }
-
+    
     if (priority && !validPriorities.includes(priority)) {
       return res
-        .status(400)
-        .json({
-          error: `Invalid priority. Allowed values are: ${validPriorities.join(
-            ", "
-          )}`,
-        });
+      .status(400)
+      .json({
+        error: `Invalid priority. Allowed values are: ${validPriorities.join(
+          ", "
+        )}`,
+      });
     }
-
+    
     // Check if the assignee is part of the project (if provided)
     if (assignee_id) {
       const assigneeRole = await checkUserRole(assignee_id, project_id);
       if (!assigneeRole) {
         return res
-          .status(400)
-          .json({
-            error: "The specified assignee is not part of this project",
-          });
+        .status(400)
+        .json({
+          error: "The specified assignee is not part of this project",
+        });
       }
     }
-
+    
     // Create the task
     const task = await Task.create({
       project_id,
@@ -391,12 +392,17 @@ exports.addTaskToProject = async (req, res) => {
       assignee_id,
     });
 
+    // Invalidate the cache for this project
+    await invalidateProjectCache(project_id);
+    
     res.status(201).json(task);
   } catch (error) {
     console.error("Error adding task:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+const redisClient = require("../../redisClient");
 
 exports.getProjectTasks = async (req, res) => {
   const req_user_id = req.user.id;
@@ -407,15 +413,28 @@ exports.getProjectTasks = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10; // Default to 10 tasks per page
   const offset = (page - 1) * limit;
 
+  // Create a unique cache key
+  const cacheKey = `project:${project_id}:page:${page}:limit:${limit}`;
+
   try {
     // Check if the user is part of the project
     const userRole = await checkUserRole(req_user_id, project_id);
-    if (!userRole)
+    if (!userRole) {
       return res
         .status(403)
         .json({ error: "Access denied. You are not part of this project" });
+    }
 
-    // Fetch tasks associated with the project, with only the required fields and pagination
+    // Check Redis cache for the response
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      // Send the cached response if found
+      console.log("Cache hit for", cacheKey);
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Fetch tasks from the database if not cached
+    console.log("Cache miss for", cacheKey);
     const { count, rows: tasks } = await Task.findAndCountAll({
       where: { project_id },
       attributes: [
@@ -429,21 +448,21 @@ exports.getProjectTasks = async (req, res) => {
       ],
       include: [
         {
-          model: User, // Include the assignee details
-          as: "assignee", // Assuming Task model has an alias for the User model as 'assignee'
-          attributes: ["id", "username", "email"], // Include only specific user fields
+          model: User,
+          as: "assignee",
+          attributes: ["id", "username", "email"],
         },
       ],
       limit,
       offset,
       order: [["created_at", "ASC"]],
     });
-    
+
     // Calculate total pages
     const totalPages = Math.ceil(count / limit);
 
-    // Send paginated response
-    res.json({
+    // Create the response object
+    const response = {
       tasks,
       pagination: {
         totalItems: count,
@@ -451,9 +470,26 @@ exports.getProjectTasks = async (req, res) => {
         currentPage: page,
         itemsPerPage: limit,
       },
-    });
+    };
+
+    // Store the response in Redis with a TTL of 1 hour
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+
+    // Send the response
+    res.json(response);
   } catch (error) {
     console.error("Error fetching project tasks:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
+async function invalidateProjectCache(project_id) {
+  // Delete all keys related to this project
+  const cacheKeyPattern = `project:${project_id}:*`;
+  const keys = await redisClient.keys(cacheKeyPattern); // Get all matching keys
+  if (keys.length > 0) {
+    await redisClient.del(keys); // Delete all matching keys
+    console.log(`Cache invalidated for project: ${project_id}`);
+  }
+}

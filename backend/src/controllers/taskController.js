@@ -1,4 +1,5 @@
 const { Project, Task, Role, User } = require("../models");
+const redisClient = require("../../redisClient");
 
 // function to check if the user has a role in the project
 const checkUserRole = async (user_id, project_id) => {
@@ -10,6 +11,17 @@ const checkUserRole = async (user_id, project_id) => {
   });
   return userRole;
 };
+
+// Invalidate the cache for a project when a task is created, updated or deleted
+async function invalidateProjectCache(project_id) {
+  // Delete all keys related to this project
+  const cacheKeyPattern = `project:${project_id}:*`;
+  const keys = await redisClient.keys(cacheKeyPattern); // Get all matching keys
+  if (keys.length > 0) {
+    await redisClient.del(keys); // Delete all matching keys
+    console.log(`Cache invalidated for project: ${project_id}`);
+  }
+}
 
 // Get task by id
 exports.getTaskById = async (req, res) => {
@@ -105,6 +117,10 @@ exports.updateTask = async (req, res) => {
       priority: priority || task.priority,
       assignee_id: assignee_id ,
     });
+
+    // Invalidate the cache for the project
+    invalidateProjectCache(project_id);
+
     res.json(updatedTask);
   } catch (error) {
     console.error("Error updating task:", error); 
@@ -140,6 +156,9 @@ exports.deleteTask = async (req, res) => {
     });
 
     if (!rowsDeleted) return res.status(404).json({ error: "Task not found" });
+
+    // Invalidate the cache for the project
+    invalidateProjectCache(project_id);
 
     res.json({ message: "Task deleted" });
   } catch (error) {

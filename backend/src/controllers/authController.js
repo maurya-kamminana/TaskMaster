@@ -2,7 +2,6 @@ const { sequelize, User } = require('../models/postgres_models');
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const redisClient = require("../../redisClient");
 const { encrypt } = require("../services/cryptoService");
 const { generateAccessToken, generateRefreshToken } = require("../services/tokenService");
 const { Op } = require('sequelize');
@@ -30,11 +29,6 @@ exports.registerUser = async (req, res) => {
     // Generate token
     const access_token = generateAccessToken(user);
     const refresh_token = generateRefreshToken(user);
-
-    // store the refresh token in the redis database
-    // Encrypt and store refresh token in Redis
-    // const encryptedToken = encrypt(refresh_token);
-    await redisClient.sAdd('RefreshTokens', refresh_token);
 
     console.log("successfully created user : " , user);
 
@@ -79,12 +73,6 @@ exports.loginUser = async (req, res) => {
     const access_token = generateAccessToken(user);
     const refresh_token = generateRefreshToken(user);
 
-    // store the refresh token in the redis database
-    // Encrypt and store refresh token in Redis
-    // const encryptedToken = encrypt(refresh_token);
-    await redisClient.sAdd('RefreshTokens', refresh_token);
-
-
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
       secure: true,
@@ -114,12 +102,6 @@ exports.generateNewToken = async (req, res) => {
       return res.status(400).json({ message: "Refresh token is required" });
     }
 
-    const exists = await redisClient.sIsMember('RefreshTokens', refresh_token);
-    console.log("Redis token exists:", exists);
-    if (!exists) {
-      return res.status(401).json({ message: "Invalid refresh token, not in redis" });
-    }
-
     const decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET);
     console.log("Decoded token:", decoded);
 
@@ -133,30 +115,27 @@ exports.generateNewToken = async (req, res) => {
 };
 
 
-// Remove refresh token from the redis database
+// Remove refresh token
 exports.removeRefreshToken = async (req, res) => {
   try {
     const refresh_token = req.cookies.refresh_token;
 
-    // if refresh token is not provided return error
-    if (!refresh_token) return res.status(400).json({ message: "Refresh token is required" });
+    // If refresh token is not provided, return an error
+    if (!refresh_token) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
 
-    // remove the refresh token from the redis database
-    // Encrypt and remove refresh token from Redis
-    // const encryptedToken = encrypt(refresh_token);
-    const removed = await redisClient.sRem('RefreshTokens', refresh_token);
+    // Clear the refresh token cookie
     res.clearCookie('refresh_token', {
       httpOnly: true,
       secure: true,
       sameSite: 'Strict',
     });
 
-    if (removed > 0) {
-        res.status(200).json({ message: "Refresh token removed successfully" });
-    } else {
-        res.status(404).json({ message: "Refresh token not found in Redis" });
-    }
+    res.status(200).json({ message: "Refresh token removed successfully" });
   } catch (error) {
+    console.error("Error in removeRefreshToken:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
