@@ -197,6 +197,3 @@ If the project includes a frontend:
 - For Kafka setup and testing, you may need to create topics manually using Kafka CLI tools.
 - For further assistance or to report issues, refer to the [GitHub repository](https://github.com/maurya-kamminana/TaskMaster).
 
-
-# TaskMaster Overview
-<img width="1437" alt="image" src="https://github.com/user-attachments/assets/1914f77b-f307-4f39-9352-08b05815ee08" />
